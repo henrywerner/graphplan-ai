@@ -7,10 +7,13 @@ public class state {
     public action[] actions;
     public ArrayList<action> parents;
 
-    state() {
-
-    }
-
+    /**
+     * Constructor
+     * @param p      parent
+     * @param isTrue indicate whether or not state is negated
+     * @param x      X coordinate
+     * @param y      Y coordinate
+     */
     state(action p, boolean isTrue, byte x, byte y) {
         parents = new ArrayList<>();
         parents.add(p);

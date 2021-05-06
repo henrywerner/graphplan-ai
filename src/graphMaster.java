@@ -1,9 +1,7 @@
 import java.util.ArrayList;
 import java.util.Stack;
 
-public class graphMaster {
-
-    /* PDDL:
+/* PDDL:
     Init(at(startPointX, startPointY))
     Goal(at(endPointX, endPointY))
 
@@ -13,53 +11,9 @@ public class graphMaster {
     Action(MoveY(X1,Y1,Y2),
         PRECOND: IsClear(X1, Y2) && at(X1, Y1) && |Y1 - Y2| == 1
         EFFECT:  !at(X1, Y1) && at(X1, Y2))
+*/
 
-    Action(Move(Left)
-        PRECOND: IsClear(Left)
-        EFFECT:  Poss(x-1,y))
-    Action(Move(Right)
-        PRECOND: IsClear(Right)
-        EFFECT:  Poss(x+1,y))
-    Action(Move(Up)
-        PRECOND: IsClear(Up)
-        EFFECT:  Poss(x,y-1))
-    Action(Move(Down)
-        PRECOND: IsClear(Down)
-        EFFECT:  Poss(x,y+1))
-
-    CAN YOU DO A HLA THAT WOULD MOVE N TIMES IN A DIRECTION? WOULD THAT REDUCE TREE SIZE?
-
-    I think the best plan is to just do one action per level with no HLAs. That way I can just do a level count heuristic.
-    Like it would be super trash on memory cost, but it'd work.
-     */
-
-
-    //RECORDING 22 28:38
-
-    /*
-        The Plan:
-        - reuse the file reading code from last time
-        - somehow parse that into a planning graph
-        - create a set of rules/methods that will be used for navigation
-        - define the mutexes
-        - Store the nogoods somehow???
-
-
-        The challenge of this project comes from building the graph and then extracting the solution from said graph.
-
-        The Graph:
-        - Linked list?
-        - Maybe all nodes are objects and each level is its own array?
-        - event object: contains an action value and a list of possible results
-        - For mutexes: maybe have a global map that maps the objects together? this might cut down on redundancy of private vars
-
-        Node Object:
-            Has:
-            - Parent
-            - Outcomes
-            - Action
-         */
-
+public class graphMaster {
     private final byte startPointX, startPointY;
     private final ArrayList<Byte> endPointX, endPointY;
     public static byte[][] map; //I made this static as a shortcut and should probably fix it
@@ -82,6 +36,7 @@ public class graphMaster {
         buildGraph();
     }
 
+    /** Graph construction and expansion **/
     void buildGraph() {
         ArrayList<ArrayList<state>> state_levels = new ArrayList<>();
         ArrayList<ArrayList<action>> action_levels = new ArrayList<>();
@@ -90,32 +45,32 @@ public class graphMaster {
         s0.add(new state(null, true, startPointX, startPointY));
         state_levels.add(s0);
 
-        while (state_levels.size() < 300) {
-            System.out.println("Run number: " + state_levels.size());
-            ArrayList<state> possibleSolutions = new ArrayList<>();
+        /*core loop*/
+        while (state_levels.size() < 300) {     //arbitrary limit at 300 levels
 
-            //generate actions
+            /*generate actions*/
             ArrayList<action> aN = new ArrayList<>();
-            for (state s : state_levels.get(state_levels.size()-1)) { //for each state in the current level
+            for (state s : state_levels.get(state_levels.size()-1)) {   //for each state in the current level
                 action[] acts = s.generateActions();
-                //nightmere
-                for (action a : acts) {
+                //nightmare
+                for (action a : acts) {                     //for each potential action from current state
                     boolean alreadyExists = false;
-                    for (action existingAction : aN) {
+                    for (action existingAction : aN) {      //check against existing actions in current level
                         if (a.outcomes == existingAction.outcomes) {
                             alreadyExists = true;
-                            existingAction.parents.add(s);
-                            break; // TODO: check if this actually breaks the loop
+                            existingAction.parents.add(s);  //if alreadyExists, add s to the action's parents
+                            break;
                         }
                     }
                     if (!alreadyExists) {
-                        aN.add(a);
+                        aN.add(a); //add new actions to the level arraylist
                     }
                 }
             }
             action_levels.add(aN);
 
-            //generate states
+            /*generate states*/
+            ArrayList<state> possibleSolutions = new ArrayList<>();
             ArrayList<state> sN = new ArrayList<>();
             for (action a : action_levels.get(action_levels.size()-1)) { //I'M GOING TO SCREAM
                 for (state outcome : a.outcomes) {
@@ -133,29 +88,51 @@ public class graphMaster {
                         for (int j = 0; j < endPointX.size(); j++) {
                             if (outcome.isEqual(endPointX.get(j), endPointY.get(j)))
                                 possibleSolutions.add(sN.get(sN.size()-1));
-                            //I'm really not sure how Java is going to handle this
+                            //I'm really not sure how Java is going to handle this.  Edit: it seems to have worked out.
                         }
                     }
                 }
             }
             state_levels.add(sN);
 
-            //check for solutions
+            /*check for solutions*/
             while (!possibleSolutions.isEmpty()) {
-                if (extractSolution(possibleSolutions.get(0))) {
-                    //answer found
-                    handler.createVisualMap(map);
+                if (extractSolution(possibleSolutions.get(0))) { //answer found
+                    handler.createVisualMap(map); //print updated visual map
                     return;
                 }
+
+                /* This is where I _would_ put the failed solution into a NOGOODS table, but it didn't seem necessary
+                *  because there is only one state required for the goal. Possible solutions are only considered when
+                *  they initially touch a goal, so the only way a bad path could be reevaluated is if it somehow touched
+                *  the goal a second time. */
                 possibleSolutions.remove(0);
+            }
+
+            /*check if actions or states have leveled out*/
+            int aLvl_size = action_levels.size() - 1;
+            //int sLvl_size = state_levels.size() - 1;
+            //System.out.println("Actions at A" + aLvl_size + ": " + action_levels.get(aLvl_size).size());
+            //System.out.println("States at S" + sLvl_size + ": " + state_levels.get(sLvl_size).size());
+            if (aLvl_size > 2) {
+                if (action_levels.get(aLvl_size).size() == action_levels.get(aLvl_size-1).size()) {
+                    System.out.println("Graph leveled out. No solution.");
+                    return;
+                }
             }
 
         }
     }
 
+    /**
+     * Backwards trace a given state to find and parse a possible solution.
+     * @param s state representing a reached goal
+     * @return if a solution was identified
+     */
     boolean extractSolution(state s) {
         Stack<Integer> path = traceback(s);
-        if (path != null) {
+
+        if (path != null) { //working solution was found
             Stack<String> output = new Stack<>();
 
             int at_X = path.peek();
@@ -163,8 +140,9 @@ public class graphMaster {
             at_X = at_X % 10;
             path.pop();
 
-            map[at_X][at_Y] = 6;
+            map[at_X][at_Y] = 6; //set endpoint marker
 
+            /*calculate movement directions and print to console*/
             while (!path.isEmpty()) {
                 int prior_X = path.peek();
                 int prior_Y = prior_X / 10;
@@ -172,29 +150,26 @@ public class graphMaster {
 
                 if (prior_X == at_X) { //likely y movement
                     if (prior_Y + 1 == at_Y) { //down
-                        //System.out.println("Down");
                         output.push("Down");
                     }
                     else if (prior_Y - 1 == at_Y) { //up
-                        //System.out.println("Up");
                         output.push("Up");
                     }
+                    else if (prior_Y == at_Y) { //stayed in place
+                        output.push("Stayed in place");
+                    }
                     else {
-                        //System.out.println("Unrecognized movement");
                         output.push("Unrecognized movement");
                     }
                 }
                 else if (prior_Y == at_Y) { //likely x movement
                     if (prior_X + 1 == at_X) { //right
-                        //System.out.println("Right");
                         output.push("Right");
                     }
                     else if (prior_X - 1 == at_X) { //left
-                        //System.out.println("Left");
                         output.push("Left");
                     }
                     else {
-                        //System.out.println("Unrecognized movement");
                         output.push("Unrecognized movement");
                     }
                 }
@@ -209,15 +184,23 @@ public class graphMaster {
                 System.out.println(output.peek());
                 output.pop();
             }
+            System.out.println();
 
             return true;
         }
-
+        else {
+            System.out.println("Potential solution traceback failed.");
+        }
         return false;
     }
 
+    /**
+     * Search the parents of a given state to find a path to the starting point.
+     * @param s State
+     * @return Stack of agent locations corresponding to a valid path from the starting point. Null if path not found.
+     */
     Stack<Integer> traceback(state s) {
-        if (s.parents == null) { //starting point
+        if (s.parents.get(0) == null) { //starting point
             Stack<Integer> path = new Stack<>();
             path.push(s.Y * 10 + s.X); //space index of 0-99
             return path;
@@ -232,14 +215,12 @@ public class graphMaster {
         return null;
     }
 
+    /**
+     * Search the parents of a given action to find a path to the starting point.
+     * @param a Action
+     * @return Stack of agent locations corresponding to a valid path from the starting point. Null if path not found.
+     */
     Stack<Integer> traceback(action a) {
-        if (a == null) {
-            System.out.println("How?!");
-            Stack<Integer> path = new Stack<>();
-            path.push(0); //space index of 0-99
-            return path;
-        }
-
         for (state s : a.parents) {
             Stack<Integer> path = traceback(s);
             if (path != null) {
@@ -249,6 +230,12 @@ public class graphMaster {
         return null;
     }
 
+    /**
+     * Check if a given position is a valid move
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @return If position is unobstructed
+     */
     public static boolean isClear(byte x, byte y) {
         try {
             return (map[x][y] < 3);
