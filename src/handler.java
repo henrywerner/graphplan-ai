@@ -18,6 +18,7 @@ public class handler {
         System.out.println("\nStarting point: (" + startX + ", " + startY + ")");
 
         //navigator nvg = new navigator(map,startX,startY,endPointX,endPointY);
+        graphMaster gm = new graphMaster(map, startX, startY, endPointX, endPointY);
     }
 
     /* Turns the input file's contents into a 2D array */

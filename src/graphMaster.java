@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Stack;
 
 public class graphMaster {
 
@@ -59,8 +60,8 @@ public class graphMaster {
             - Action
          */
 
-    private byte startPointX, startPointY;
-    private ArrayList<Byte> endPointX, endPointY;
+    private final byte startPointX, startPointY;
+    private final ArrayList<Byte> endPointX, endPointY;
     public static byte[][] map; //I made this static as a shortcut and should probably fix it
 
     /**
@@ -77,6 +78,8 @@ public class graphMaster {
         endPointY = epY;
         startPointX = x;
         startPointY = y;
+
+        buildGraph();
     }
 
     void buildGraph() {
@@ -85,8 +88,10 @@ public class graphMaster {
 
         ArrayList<state> s0 = new ArrayList<>();
         s0.add(new state(null, true, startPointX, startPointY));
+        state_levels.add(s0);
 
         while (state_levels.size() < 300) {
+            System.out.println("Run number: " + state_levels.size());
             ArrayList<state> possibleSolutions = new ArrayList<>();
 
             //generate actions
@@ -136,7 +141,112 @@ public class graphMaster {
             state_levels.add(sN);
 
             //check for solutions
+            while (!possibleSolutions.isEmpty()) {
+                if (extractSolution(possibleSolutions.get(0))) {
+                    //answer found
+                    handler.createVisualMap(map);
+                    return;
+                }
+                possibleSolutions.remove(0);
+            }
+
         }
+    }
+
+    boolean extractSolution(state s) {
+        Stack<Integer> path = traceback(s);
+        if (path != null) {
+            Stack<String> output = new Stack<>();
+
+            int at_X = path.peek();
+            int at_Y = at_X / 10;
+            at_X = at_X % 10;
+            path.pop();
+
+            map[at_X][at_Y] = 6;
+
+            while (!path.isEmpty()) {
+                int prior_X = path.peek();
+                int prior_Y = prior_X / 10;
+                prior_X = prior_X % 10;
+
+                if (prior_X == at_X) { //likely y movement
+                    if (prior_Y + 1 == at_Y) { //down
+                        //System.out.println("Down");
+                        output.push("Down");
+                    }
+                    else if (prior_Y - 1 == at_Y) { //up
+                        //System.out.println("Up");
+                        output.push("Up");
+                    }
+                    else {
+                        //System.out.println("Unrecognized movement");
+                        output.push("Unrecognized movement");
+                    }
+                }
+                else if (prior_Y == at_Y) { //likely x movement
+                    if (prior_X + 1 == at_X) { //right
+                        //System.out.println("Right");
+                        output.push("Right");
+                    }
+                    else if (prior_X - 1 == at_X) { //left
+                        //System.out.println("Left");
+                        output.push("Left");
+                    }
+                    else {
+                        //System.out.println("Unrecognized movement");
+                        output.push("Unrecognized movement");
+                    }
+                }
+
+                at_X = prior_X;
+                at_Y = prior_Y;
+                map[at_X][at_Y] = 5;
+                path.pop();
+            }
+
+            while (!output.isEmpty()) { //It's 2:30am and I couldn't be bothered to reverse the stack properly
+                System.out.println(output.peek());
+                output.pop();
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    Stack<Integer> traceback(state s) {
+        if (s.parents == null) { //starting point
+            Stack<Integer> path = new Stack<>();
+            path.push(s.Y * 10 + s.X); //space index of 0-99
+            return path;
+        }
+        for (action a : s.parents) {
+            Stack<Integer> path = traceback(a);
+            if (path != null) {
+                path.push(s.Y * 10 + s.X);
+                return path;
+            }
+        }
+        return null;
+    }
+
+    Stack<Integer> traceback(action a) {
+        if (a == null) {
+            System.out.println("How?!");
+            Stack<Integer> path = new Stack<>();
+            path.push(0); //space index of 0-99
+            return path;
+        }
+
+        for (state s : a.parents) {
+            Stack<Integer> path = traceback(s);
+            if (path != null) {
+                return path;
+            }
+        }
+        return null;
     }
 
     public static boolean isClear(byte x, byte y) {
