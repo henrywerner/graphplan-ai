@@ -116,7 +116,7 @@ public class graphMaster {
             //System.out.println("States at S" + sLvl_size + ": " + state_levels.get(sLvl_size).size());
             if (aLvl_size > 2) {
                 if (action_levels.get(aLvl_size).size() == action_levels.get(aLvl_size-1).size()) {
-                    System.out.println("Graph leveled out. No solution.");
+                    System.out.println("Graph leveled out. \nNo Solution");
                     return;
                 }
             }
@@ -180,6 +180,7 @@ public class graphMaster {
                 path.pop();
             }
 
+            System.out.println("Endpoint found. \nSolution:");
             while (!output.isEmpty()) { //It's 2:30am and I couldn't be bothered to reverse the stack properly
                 System.out.println(output.peek());
                 output.pop();
