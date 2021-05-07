@@ -72,6 +72,7 @@ Right
 
 C:\Users\htwer\Desktop\graphplan-ai\src>
 ```
+NOTE: When running the program within an IDE, I had to use the argument `./maps/MapFile` instead of `../maps/MapFile`.
 
 ## Map Depiction
 `ST` : Starting point
