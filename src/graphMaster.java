@@ -37,7 +37,7 @@ public class graphMaster {
     }
 
     /** Graph construction and expansion **/
-    void buildGraph() {
+    void buildGraph() { //Nightmare code. Very big O. Not memory efficient. Somehow still works.
         ArrayList<ArrayList<state>> state_levels = new ArrayList<>();
         ArrayList<ArrayList<action>> action_levels = new ArrayList<>();
 

@@ -17,7 +17,6 @@ public class handler {
         createVisualMap(map);
         System.out.println("\nStarting point: (" + startX + ", " + startY + ")");
 
-        //navigator nvg = new navigator(map,startX,startY,endPointX,endPointY);
         graphMaster gm = new graphMaster(map, startX, startY, endPointX, endPointY);
     }
 
